@@ -2,9 +2,9 @@
 
 ## ⚠️ 前置规则（必须遵守）
 
-1. **先枚举窗口**：调用 vision 前必须先用 `pygetwindow` 枚举窗口标题，确认目标窗口存在且已激活到前台。窗口不存在就不要截图。
-2. **🚫 禁止全屏截图**：必须先利用ljqCtrl截取窗口区域。能截局部（如标题栏）就不截整窗口，能截窗口就绝不全屏。全屏截图在任何场景下都不允许。
-3. **能不用 vision 就不用**：如果窗口标题/本地 OCR（`ocr_utils.py`）能获取所需信息，就不要调用 vision API，省 token 且更可靠。Vision 是最后手段。
+1. **先枚举窗口**：调用 vision 前先用 `screen_capture_pipeline.py --list-apps` 或 `inference.capture_app()` 确认目标窗口存在。窗口不存在就不要截图。
+2. **🚫 禁止全屏截图**：必须用 `screen_capture_pipeline --app "AppName"` 或 `inference.capture_app()` 截取窗口区域。能截局部就不截整窗口，能截窗口就绝不全屏。全屏截图在任何场景下都不允许。
+3. **能不用 vision 就不用**：如果本地 OCR（`screen_capture_pipeline --ocr --app "AppName"` 或 `inference.capture_app(do_ocr=True)`）能获取所需信息，就不要调用 vision API，省 token 且更可靠。Vision 是最后手段。
 
 ## 🐛 macOS 15+ 大坑：screencapture -R 损坏
 
@@ -21,14 +21,96 @@ screencapture -x /tmp/test.png                          # ✅ 正常
 screencapture -R 0,0,100,100 -x /tmp/test.png           # ❌ 失败(所有macOS 15+)
 ```
 
+## 🔗 screen_capture_pipeline 集成——一键截图+分析
+
+`screen_capture_pipeline.py` 是截图+分析的统一入口，已集成到 `inference.capture_app()`。
+
+### CLI 快速用法
+
+```bash
+# 列出所有可截取的窗口
+python memory/screen_capture_pipeline.py --list-apps
+
+# 截取某应用窗口 + OCR
+python memory/screen_capture_pipeline.py --app "Terminal" --ocr
+
+# 截取 + OCR + Vision分析
+python memory/screen_capture_pipeline.py --app "Cursor" --ocr --vision "截图里有几个按钮?"
+
+# 指定区域截取
+python memory/screen_capture_pipeline.py --bbox 100 100 800 600 --ocr
+```
+
+### 程序化 API（推荐）
+
+```python
+from memory.inference import inference
+
+# 只截图+OCR（最快）
+result = inference.capture_app("Terminal", do_ocr=True, vision_prompt=None)
+print(result["ocr"]["text"])          # OCR识别文字
+print(result["bbox"])                 # 窗口坐标 [x1,y1,x2,y2]
+
+# 截图+OCR+Vision分析（全链路）
+result = inference.capture_app("Cursor", do_ocr=True,
+                                vision_prompt="界面上有哪些功能区?")
+print(result.get("vision", ""))       # Vision分析结果
+
+# 仅截图（不分析，最小开销）
+result = inference.capture_app("Terminal", do_ocr=False)
+```
+
+### 输出格式
+
+返回结构化 dict：
+```python
+{
+    "status": "ok",          # "ok" 或 "error"
+    "app": "Terminal",       # 请求的应用名
+    "matched_owner": "Terminal",  # 实际匹配的窗口所有者
+    "bbox": [100, 200, 900, 700], # 窗口物理坐标
+    "ocr": {                 # 仅当 do_ocr=True
+        "text": "...",       # 全部识别文字
+        "lines": [...],      # 分行列表
+        "num_lines": 8,
+        "elapsed_s": 0.35
+    },
+    "vision": "..."          # 仅当 vision_prompt 指定
+}
+```
+
+### 效率指南
+
+| 场景 | 推荐用法 | 耗时 |
+|------|---------|------|
+| 快速看文字 | `--app "Terminal" --ocr` | ~0.3s |
+| 完整UI理解 | `--app "Cursor" --ocr --vision "描述界面"` | ~35-55s |
+| 仅截图不分析 | `--app "Finder"` (不加--ocr/--vision) | ~0.1s |
+| 代码内调用 | `inference.capture_app("App", do_ocr=True)` | ~0.3s |
+
 ## 快速用法
 
 ```python
 from vision_api import ask_vision
-result = ask_vision(image, prompt="描述图片内容", backend="ollama", timeout=60, max_pixels=1_440_000)
+
+# 推荐Prompt（v2优化版，经R35实测验证）:
+# - 比"描述图片内容"快1.5-2倍 (29s vs 49s)
+# -中文OCR准确率85%+，颜色识别准确率95%+
+# - 注意：结构化/编号列表prompt在temperature=0时会导致qwen3-vl返回空（贪婪解码死锁）
+# - 若需结构化输出，建议设置temperature≥0.7，此时结构化prompt正常工作且速度与自然语言相当
+OPTIMIZED_PROMPT = ("请仔细描述图片内容。注意：中文文字要逐字准确识别，"
+                    "不要遗漏也不要写错别字；颜色要用标准名称描述"
+                    "（红/橙/黄/绿/蓝/紫/黑/白/灰）。")
+
+result = ask_vision(image, prompt=OPTIMIZED_PROMPT, backend="ollama", timeout=60, max_pixels=1_440_000)
 # image: 文件路径(str/Path) 或 PIL Image
 # backend: 'ollama'(默认) | 'claude' | 'openai' | 'modelscope'
 # 返回 str：成功为模型回复，失败为 'Error: ...'
+
+# 已知问题（R35发现）:
+# 1. "vl→vi"混淆：行尾"vl"被误认为"vi"（ollama tokenizer边界问题）
+# 2. 长文本截断：密集中文超1024 tokens时被截尾
+# 3. 结构化prompt+temp=0返回空：编号列表/JSON格式prompt在temperature=0时导致贪婪解码死锁，设temperature≥0.7即可正常
 ```
 
 ## 补充：Ollama 本地视觉模型（完全免费）

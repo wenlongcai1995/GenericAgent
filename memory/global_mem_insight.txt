@@ -1,26 +1,34 @@
 # [Global Memory Insight]
-Browser special ops: tmwebdriver_sop(file upload/image search/PDF blob/physical coords/HttpOnly Cookie/autofill bypass/cross-origin iframe/CDP/cross-tab)
-Keyboard & Mouse: ljqCtrl_sop(no pyautogui/activate first) Screenshot/Vision: ocr/vision_sop | No fullscreen capture, prefer window | vision_api默认用Ollama qwen3-vl:8b | macOS用temp/screen_capture_pipeline.py(区域截图+OCR+Vision)
-Scheduling: scheduled_task_sop | Autonomous: autonomous_operation_sop | watchdog/reflect: agentmain --reflect | scheduler机制: reflect/scheduler.py端口锁(45762)防重复启动,轮询120s,check()取sche_tasks/*.json,条件(时间/延迟≤max_delay_hours/冷却期/done文件),触发返回prompt含[报告路径],agent执行后写done/
-Mobile: adb_ui.py | Silent Search: silent_search.py(静默HTTP搜索,不打开浏览器,用duckduckgo,勿用bing→base64兼容性差) | Silent Fetch: silent_fetch_v2(静默网页正文提取,基于trafilatura+requests fallback防挂起,搜+提组合流见search_fetch_sop)
+Browser special ops: tmwebdriver_sop(file upload/image search/PDF blob/physical coords/HttpOnly Cookie/autofill bypass/cross-origin iframe/CDP/cross-tab), tab_ctl.py(Tab管理:列表/close/create/undo/group/summary)
+Keyboard & Mouse: ljqCtrl_sop(no pyautogui/activate first) | Screenshot/Vision: screen_capture_pipeline.py(区域截图+OCR+Vision,集成inference.capture_app()), inference.vision()自动回退OCR(engine=tesseract), vision_sop(已更新)
+Scheduling: scheduled_task_sop | Autonomous: autonomous_operation_sop | watchdog: agentmain --reflect | scheduler: 定时条件触发(见L2 LAUNCHD_PERSISTENCE)
+Proxy: proxy_api_control.py+auto_proxy_switch.py(Clash Verge域名分流/最优节点/持续监控) | Mobile: adb_ui.py | Silent Search: silent_search.py(静默HTTP搜索,bing默认;DDG常触发验证码;搜不到用浏览器直连官网) | Silent Fetch: silent_fetch(搜+提组合流见search_fetch_sop; 支持summarize=True自动LLM摘要) | Skill Search: skill_search_utils.py(105K skill卡语义检索,from memory.skill_search_utils import skill_search,英文查询)
+Backup: macOS一键恢复 — brew bundle(包管理)+mackup(配置)双引擎, mas内嵌brew bundle; mackup config必放~/.mackup.cfg | 报告: R91_macOS_restore_evaluation.md
 
 Read L2 or ls ../memory/ for L3 when needed
 L0(META-SOP): memory_management_sop
-L2: PROTECTED_PATHS(Pictures/iCloud:不可改,必问用户)
-L3: adb_ui.py(移动端ADB控制(截图/UI树/点击)) | autonomous_operation_sop.md(自主任务SOP) | github_contribution_sop.md(GitHub绿点策略)
-  | keychain.py(密钥管理) | ljqCtrl.py(键盘鼠标模拟(底层)) | ljqCtrl_sop.md(键盘鼠标SOP) | memory_cleanup_sop.md(记忆清理SOP)
-  | ocr_utils.py(OCR工具) | plan_sop.md(复杂任务规划SOP) | procmem_scanner.py(进程内存扫描工具) | procmem_scanner_sop.md(进程内存扫描SOP)
-  | scheduled_task_sop.md(定时任务SOP) | search_fetch_sop.md(搜索+提取组合流SOP) | silent_fetch.py(静默网页正文提取)
-  | silent_search.py(静默HTTP搜索) | subagent.md(子智能体协调) | tmwebdriver_sop.md(浏览器特殊操作SOP) | ui_detect.py(UI控件检测)
-  | verify_sop.md(通用验证SOP) | vision_api.py(视觉API(ollama qwen3-vl)) | vision_api.template.py(视觉API模板)
-  | vision_sop.md(视觉操作SOP) | web_setup_sop.md(浏览器WebDriver安装SOP) | xiaohongshu_profile_edit_sop.md(小红书资料修改(app独占))
-  | xiaohongshu_schedule_publish_sop.md(小红书定时发布)
+L2: PROTECTED_PATHS(Pictures/iCloud:不可改,必问用户) | LAUNCHD_PERSISTENCE(scheduler launchd守护) | PROXY_STATUS(Clash Verge+ss-local 双代理)
+L3: adb_ui.py(截图/UI树/点击) | autonomous_operation_sop.md(自主任务SOP) | file_ops.py(批量重命名/分类/格式转换) | file_ops_sop.md(文件操作SOP)
+  | gh_ops_sop.md(GitHub CLI操作SOP) | github_contribution_sop.md(GitHub绿点策略)
+  | inference.py(统一推理接口text/vision/capture_app,ollama自动检测,回退llm_client+vision_api) | keychain.py(密钥管理) | ljqCtrl.py(键盘鼠标模拟(底层))
+  | ljqCtrl_sop.md(键盘鼠标SOP) | llm_client.py(通用文本推理(ollama qwen3:8b)) | memory_cleanup_sop.md(记忆清理SOP)
+  | ocr_utils.py(OCR工具) | plan_sop.md(复杂任务规划SOP) | procmem_scanner.py(进程内存扫描,仅Windows)
+  | procmem_scanner_sop.md(进程内存扫描SOP) | scheduled_task_sop.md(定时任务SOP) | search_fetch_sop.md(搜索+提取组合流SOP)
+  | silent_fetch.py(静默网页正文提取) | silent_search.py(静默HTTP搜索) | skill_search_utils.py(105K技能卡语义检索(便捷包装))
+  | subagent.md(子智能体协调) | tab_ctl.py(Tab管理:列表/close/create/undo/reopen/分组/摘要) | tmwebdriver_sop.md(浏览器特殊操作SOP) | ui_detect.py(UI控件检测) | verify_sop.md(通用验证SOP)
+  | screen_capture_pipeline.py(macOS截图+OCR+Vision管道,含capture_app/capture_and_analyze API) | vision_api.py(视觉API(ollama qwen3-vl)) | vision_api.template.py(视觉API模板) | vision_sop.md(视觉操作SOP,已更新引用)
+  | web_setup_sop.md(浏览器WebDriver安装SOP) | xiaohongshu_profile_edit_sop.md(小红书资料修改(app独占))
+  | xiaohongshu_schedule_publish_sop.md(小红书定时发布) | gh_ops.py(封装gh CLI,issue/PR/release操作)
+  | proxy_api_control.py(Clash Verge API:查分组/切换/测速) | proxy_api_control_sop.md(Clash Verge API SOP)
+  | auto_proxy_switch.py(域名分流自动切换,最快节点) | auto_proxy_switch_sop.md(域名自动切换SOP)
 L4: L4_raw_sessions/
 
 [RULES]
+0. 改自身源码先请示；./内可自主实验(装包/portable工具不限)
+0. 写记忆前读META-SOP核验，memory下文件只patch不overwrite
 1. Search first: must use es for filename search (no PS recursion/no dir traversal), always prefer Google for web search (no duckduckgo etc), check cwd first, no guessing paths
 2. Cross-verify: never trust summaries, verify numbers on detail pages
-3. Encoding safety: use file_read not PS cat/type; read before modify; import memory modules directly (already in PATH, no fake prefixes)
+3. Encoding safety: use file_read not PS cat/type; read before modify; import memory modules directly (主进程PATH有, code_run子进程需sys.path.insert(0, GA_root))
 4. Close the loop: confirm after physical simulation; request intervention after 3 failures; complete Git workflow
 5. Processes: never kill python unconditionally (kills self), use exact PID, no os.kill for liveness check
 6. Windows: prefer win32gui title enumeration for GUI state
