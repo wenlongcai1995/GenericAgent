@@ -179,6 +179,7 @@ def _parse_openai_sse(resp_lines, api_mode="chat_completions"):
     content_block: {type:'text', text:str} | {type:'tool_use', id:str, name:str, input:dict}
     """
     content_text = ""
+    reasoning_text = ""
     if api_mode == "responses":
         seen_delta = False; fc_buf = {}; current_fc_idx = None
         for line in resp_lines:
@@ -241,6 +242,9 @@ def _parse_openai_sse(resp_lines, api_mode="chat_completions"):
             delta = ch.get("delta") or {}
             if delta.get("content"):
                 text = delta["content"]; content_text += text; yield text
+            # DeepSeek thinking mode may stream reasoning_content and require passing it back next round.
+            if delta.get("reasoning_content"):
+                reasoning_text += delta["reasoning_content"]
             for tc in (delta.get("tool_calls") or []):
                 idx = tc.get("index", 0)
                 has_name = bool(tc.get("function", {}).get("name"))
@@ -254,6 +258,7 @@ def _parse_openai_sse(resp_lines, api_mode="chat_completions"):
             if usage: _record_usage(usage, api_mode)
         blocks = []
         if content_text: blocks.append({"type": "text", "text": content_text})
+        if reasoning_text: blocks.append({"type": "thinking", "thinking": reasoning_text})
         for idx in sorted(tc_buf):
             tc = tc_buf[idx]
             inps = _try_parse_tool_args(tc["args"])
@@ -297,6 +302,9 @@ def _parse_openai_json(data, api_mode="chat_completions"):
         content = msg.get("content", "")
         if content:
             blocks.append({"type": "text", "text": content}); yield content
+        reasoning_content = msg.get("reasoning_content", "")
+        if reasoning_content:
+            blocks.append({"type": "thinking", "thinking": reasoning_content})
         for tc in (msg.get("tool_calls") or []):
             fn = tc.get("function", {})
             try: args = json.loads(fn.get("arguments", "")) if fn.get("arguments") else {}
@@ -431,9 +439,11 @@ def _msgs_claude2oai(messages):
         blocks = content if isinstance(content, list) else [{"type": "text", "text": str(content)}]
         if role == "assistant":
             text_parts, tool_calls = [], []
+            reasoning_parts = []
             for b in blocks:
                 if not isinstance(b, dict): continue
                 if b.get("type") == "text" and b.get("text"): text_parts.append({"type": "text", "text": b.get("text", "")})
+                elif b.get("type") == "thinking" and b.get("thinking"): reasoning_parts.append(b.get("thinking", ""))
                 elif b.get("type") == "tool_use":
                     tool_calls.append({
                         "id": b.get("id") or '', "type": "function",
@@ -442,6 +452,8 @@ def _msgs_claude2oai(messages):
             m = {"role": "assistant"}
             if text_parts: m["content"] = text_parts
             else: m["content"] = ""
+            if reasoning_parts:
+                m["reasoning_content"] = "\n".join(x for x in reasoning_parts if x)
             if tool_calls: m["tool_calls"] = tool_calls
             result.append(m)
         elif role == "user":
@@ -969,4 +981,3 @@ class NativeToolClient:
         if resp: _write_llm_log('Response', resp.raw)
         if resp and hasattr(resp, 'tool_calls') and resp.tool_calls: self._pending_tool_ids = [tc.id for tc in resp.tool_calls]
         return resp
-

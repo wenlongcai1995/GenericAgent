@@ -68,11 +68,18 @@ def ocr_screen(bbox=None, lang=_LANG, enhance=False, engine=None):
 def ocr_window(hwnd, lang=_LANG, enhance=False, engine=None):
     """
     截取窗口并 OCR (使用 PrintWindow API，支持远程桌面断开场景)
+    ⚠️ Windows 专用: macOS 上调用会抛出 UnsupportedError
     :param hwnd: 窗口句柄(int)
     :return: dict {'text': 全文, 'lines': [行文本], 'details': [bbox+conf](仅rapid)}
     """
-    import win32gui, win32ui
-    from ctypes import windll
+    try:
+        import win32gui, win32ui
+        from ctypes import windll
+    except ImportError:
+        raise RuntimeError(
+            "ocr_window() 仅支持 Windows (需要 win32gui/win32ui)。"
+            "在 macOS 上请使用 ocr_screen(bbox=...) 替代。"
+        )
     l, t, r, b = win32gui.GetWindowRect(hwnd)
     w, h = r - l, b - t
     hwndDC = win32gui.GetWindowDC(hwnd)

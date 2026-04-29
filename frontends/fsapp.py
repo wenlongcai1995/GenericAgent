@@ -33,6 +33,11 @@ TEMP_DIR = os.path.join(PROJECT_ROOT, "temp")
 MEDIA_DIR = os.path.join(TEMP_DIR, "feishu_media")
 os.makedirs(MEDIA_DIR, exist_ok=True)
 
+# autonomous mode (controlled via /auto commands, checked by idle monitor)
+auto_enabled = False
+auto_last_active = time.time()
+auto_last_trigger = 0.0
+
 
 def _clean(text):
     for pat in _TAG_PATS:
@@ -546,6 +551,8 @@ def handle_message(data):
             send_message(open_id, f"⚠️ 暂不支持处理此类飞书消息：{message.message_type}")
         return
     print(f"收到消息 [{open_id}] ({message.message_type}, {len(image_paths)} images): {user_input[:200]}")
+    global auto_last_active
+    auto_last_active = time.time()
     if message.message_type == "text" and user_input.startswith("/"):
         return handle_command(open_id, user_input, chat_id)
 
@@ -598,10 +605,25 @@ def handle_command(open_id, cmd, chat_id=None):
     elif op == "/new":
         _send_cmd_response(reset_conversation(agent))
     elif op == "/help":
-        _send_cmd_response("命令列表:\n/stop - 停止当前任务\n/status - 查看状态\n/llm - 查看当前模型列表\n/llm [n] - 切换到第 n 个模型\n/restore - 恢复上次对话历史\n/continue - 列出可恢复会话\n/continue [n] - 恢复第 n 个会话\n/new - 开启新对话并清空当前上下文\n/help - 显示帮助")
+        _send_cmd_response("命令列表:\n/stop - 停止当前任务\n/status - 查看状态\n/auto on|off|status - 控制自主执行\n/llm - 查看当前模型列表\n/llm [n] - 切换到第 n 个模型\n/restore - 恢复上次对话历史\n/continue - 列出可恢复会话\n/continue [n] - 恢复第 n 个会话\n/new - 开启新对话并清空当前上下文\n/help - 显示帮助")
     elif op == "/status":
         llm = agent.get_llm_name() if agent.llmclient else "未配置"
         _send_cmd_response(f"状态: {'🔴 运行中' if agent.is_running else '🟢 空闲'}\nLLM: [{agent.llm_no}] {llm}")
+    elif op == "/auto":
+        sub = (parts[1] if len(parts) > 1 else "").lower()
+        global auto_enabled, auto_last_active
+        if sub == "on":
+            auto_enabled = True
+            auto_last_active = time.time()
+            _send_cmd_response("✅ 已开启自主执行模式\n空闲超过30分钟将自动启动任务")
+        elif sub == "off":
+            auto_enabled = False
+            _send_cmd_response("⏸️ 已关闭自主执行模式")
+        elif sub == "status":
+            s = "🟢 已开启" if auto_enabled else "🔴 已关闭"
+            _send_cmd_response(f"自主执行状态: {s}")
+        else:
+            _send_cmd_response("用法:\n/auto on - 开启自主执行\n/auto off - 关闭自主执行\n/auto status - 查看状态")
     elif op == "/llm":
         if not agent.llmclient:
             return _send_cmd_response("❌ 当前没有可用的 LLM 配置")
@@ -638,6 +660,25 @@ def main():
     client = create_client()
     handler = lark.EventDispatcherHandler.builder("", "").register_p2_im_message_receive_v1(handle_message).build()
     cli = lark.ws.Client(APP_ID, APP_SECRET, event_handler=handler, log_level=lark.LogLevel.INFO)
+
+    # ── idle monitor for autonomous mode ──
+    def _idle_loop():
+        global auto_last_trigger
+        while True:
+            time.sleep(30)
+            if not auto_enabled:
+                continue
+            now = time.time()
+            if now - auto_last_trigger < 120:
+                continue
+            if now - auto_last_active > 1800:
+                auto_last_trigger = now
+                agent.put_task(
+                    "[AUTO]🤖 用户已经超过30分钟未活动，作为自主智能体，请阅读SOP autonomous_operation_sop.md 执行自动任务。",
+                    source="feishu_auto"
+                )
+    threading.Thread(target=_idle_loop, daemon=True).start()
+
     print("=" * 50 + "\n飞书 Agent 已启动（长连接模式）\n" + f"App ID: {APP_ID}\n等待消息...\n" + "=" * 50)
     cli.start()
 
