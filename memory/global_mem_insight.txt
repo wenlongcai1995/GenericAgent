@@ -1,0 +1,32 @@
+# [Global Memory Insight]
+Browser special ops: tmwebdriver_sop(file upload/image search/PDF blob/physical coords/HttpOnly Cookie/autofill bypass/cross-origin iframe/CDP/cross-tab)
+Keyboard & Mouse: ljqCtrl_sop(no pyautogui/activate first) Screenshot/Vision: ocr/vision_sop | No fullscreen capture, prefer window | vision_api默认用Ollama qwen3-vl:8b | macOS用temp/screen_capture_pipeline.py(区域截图+OCR+Vision)
+Scheduling: scheduled_task_sop | Autonomous: autonomous_operation_sop | watchdog/reflect: agentmain --reflect | scheduler机制: reflect/scheduler.py端口锁(45762)防重复启动,轮询120s,check()取sche_tasks/*.json,条件(时间/延迟≤max_delay_hours/冷却期/done文件),触发返回prompt含[报告路径],agent执行后写done/
+Mobile: adb_ui.py | Silent Search: silent_search.py(静默HTTP搜索,不打开浏览器,用duckduckgo,勿用bing→base64兼容性差) | Silent Fetch: silent_fetch_v2(静默网页正文提取,基于trafilatura+requests fallback防挂起,搜+提组合流见search_fetch_sop)
+
+Read L2 or ls ../memory/ for L3 when needed
+L0(META-SOP): memory_management_sop
+L2: PROTECTED_PATHS(Pictures/iCloud:不可改,必问用户)
+L3: adb_ui.py(移动端ADB控制(截图/UI树/点击)) | autonomous_operation_sop.md(自主任务SOP) | github_contribution_sop.md(GitHub绿点策略)
+  | keychain.py(密钥管理) | ljqCtrl.py(键盘鼠标模拟(底层)) | ljqCtrl_sop.md(键盘鼠标SOP) | memory_cleanup_sop.md(记忆清理SOP)
+  | ocr_utils.py(OCR工具) | plan_sop.md(复杂任务规划SOP) | procmem_scanner.py(进程内存扫描工具) | procmem_scanner_sop.md(进程内存扫描SOP)
+  | scheduled_task_sop.md(定时任务SOP) | search_fetch_sop.md(搜索+提取组合流SOP) | silent_fetch.py(静默网页正文提取)
+  | silent_search.py(静默HTTP搜索) | subagent.md(子智能体协调) | tmwebdriver_sop.md(浏览器特殊操作SOP) | ui_detect.py(UI控件检测)
+  | verify_sop.md(通用验证SOP) | vision_api.py(视觉API(ollama qwen3-vl)) | vision_api.template.py(视觉API模板)
+  | vision_sop.md(视觉操作SOP) | web_setup_sop.md(浏览器WebDriver安装SOP) | xiaohongshu_profile_edit_sop.md(小红书资料修改(app独占))
+  | xiaohongshu_schedule_publish_sop.md(小红书定时发布)
+L4: L4_raw_sessions/
+
+[RULES]
+1. Search first: must use es for filename search (no PS recursion/no dir traversal), always prefer Google for web search (no duckduckgo etc), check cwd first, no guessing paths
+2. Cross-verify: never trust summaries, verify numbers on detail pages
+3. Encoding safety: use file_read not PS cat/type; read before modify; import memory modules directly (already in PATH, no fake prefixes)
+4. Close the loop: confirm after physical simulation; request intervention after 3 failures; complete Git workflow
+5. Processes: never kill python unconditionally (kills self), use exact PID, no os.kill for liveness check
+6. Windows: prefer win32gui title enumeration for GUI state
+7. Web JS: use native setter + event chain for input, check disabled before click, mind quote escaping; if scan empty/incomplete wait then rescan, no conclusions from first scan
+8. SOP: read SOPs not from memory, must use utils if available | complex long-running/user mentions planning -> read plan_sop
+9. Output style: concise, core conclusion first, details via tools incrementally, minimal formatting tags
+10. Autonomous选题: 优先选AI训练数据无法覆盖+对未来协作有持久收益的实时知识（如新版本meta/新API特性/刚发生的bug排查）
+11. 工具执行: 用户说"用这个工具执行任务"时,直接用已创建好的工具执行,无需询问"是否需要创建"等确认
+12. 超时自停: 任务超40轮无实质进展→直接结束汇报用户，不继续重试
