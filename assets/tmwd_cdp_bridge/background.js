@@ -25,11 +25,40 @@ async function handleExtMessage(msg, sender) {
         const tab = await chrome.tabs.update(msg.tabId, { active: true });
         await chrome.windows.update(tab.windowId, { focused: true });
         return { ok: true };
-      } else {
-        const tabs = (await chrome.tabs.query({})).filter(t => isScriptable(t.url));
-        const data = tabs.map(t => ({ id: t.id, url: t.url, title: t.title, active: t.active, windowId: t.windowId }));
-        return { ok: true, data };
       }
+      if (msg.method === 'close') {
+        await chrome.tabs.remove(msg.tabIds);
+        return { ok: true, closed: msg.tabIds.length };
+      }
+      if (msg.method === 'close_other') {
+        const tabs = await chrome.tabs.query({});
+        const toClose = tabs.filter(t => t.id !== msg.tabId && isScriptable(t.url)).map(t => t.id);
+        if (toClose.length) await chrome.tabs.remove(toClose);
+        return { ok: true, closed: toClose.length };
+      }
+      if (msg.method === 'close_by_domain') {
+        const tabs = await chrome.tabs.query({});
+        const toClose = tabs.filter(t => {
+          try { return new URL(t.url).hostname.includes(msg.domain) && isScriptable(t.url); }
+          catch(_) { return false; }
+        }).map(t => t.id);
+        if (toClose.length) await chrome.tabs.remove(toClose);
+        return { ok: true, closed: toClose.length };
+      }
+      if (msg.method === 'close_inactive') {
+        const tabs = await chrome.tabs.query({});
+        const toClose = tabs.filter(t => !t.active && isScriptable(t.url)).map(t => t.id);
+        if (toClose.length) await chrome.tabs.remove(toClose);
+        return { ok: true, closed: toClose.length };
+      }
+      if (msg.method === 'create') {
+        const tab = await chrome.tabs.create({ url: msg.url || 'about:blank' });
+        return { ok: true, data: { id: tab.id, url: tab.url, title: tab.title } };
+      }
+      // Default: list tabs
+      const tabs = (await chrome.tabs.query({})).filter(t => isScriptable(t.url));
+      const data = tabs.map(t => ({ id: t.id, url: t.url, title: t.title, active: t.active, windowId: t.windowId }));
+      return { ok: true, data };
     } catch (e) { return { ok: false, error: e.message }; }
   }
   if (msg.cmd === 'management') {
@@ -92,6 +121,35 @@ async function handleBatch(msg, sender) {
       if (c.cmd === 'cookies') {
         R.push(await handleCookies(c, sender));
       } else if (c.cmd === 'tabs') {
+        if (c.method === 'close') {
+          await chrome.tabs.remove(c.tabIds);
+          R.push({ ok: true, closed: c.tabIds.length }); continue;
+        }
+        if (c.method === 'close_other') {
+          const tabs = await chrome.tabs.query({});
+          const toClose = tabs.filter(t => t.id !== c.tabId && isScriptable(t.url)).map(t => t.id);
+          if (toClose.length) await chrome.tabs.remove(toClose);
+          R.push({ ok: true, closed: toClose.length }); continue;
+        }
+        if (c.method === 'close_by_domain') {
+          const tabs = await chrome.tabs.query({});
+          const toClose = tabs.filter(t => {
+            try { return new URL(t.url).hostname.includes(c.domain) && isScriptable(t.url); }
+            catch(_) { return false; }
+          }).map(t => t.id);
+          if (toClose.length) await chrome.tabs.remove(toClose);
+          R.push({ ok: true, closed: toClose.length }); continue;
+        }
+        if (c.method === 'close_inactive') {
+          const tabs = await chrome.tabs.query({});
+          const toClose = tabs.filter(t => !t.active && isScriptable(t.url)).map(t => t.id);
+          if (toClose.length) await chrome.tabs.remove(toClose);
+          R.push({ ok: true, closed: toClose.length }); continue;
+        }
+        if (c.method === 'create') {
+          const tab = await chrome.tabs.create({ url: c.url || 'about:blank' });
+          R.push({ ok: true, data: { id: tab.id, url: tab.url, title: tab.title } }); continue;
+        }
         const tabs = (await chrome.tabs.query({})).filter(t => isScriptable(t.url));
         R.push({ ok: true, data: tabs.map(t => ({ id: t.id, url: t.url, title: t.title, active: t.active, windowId: t.windowId })) });
       } else if (c.cmd === 'cdp') {

@@ -111,3 +111,12 @@ def _call_openai_compat(b64, prompt, timeout, *, apibase, apikey, model, proxy=N
     return resp.json()['choices'][0]['message']['content']
 
 if __name__ == '__main__':
+    # 简单测试：用默认backend测试一张本地图片
+    import sys
+    test_path = sys.argv[1] if len(sys.argv) > 1 else None
+    if test_path and os.path.isfile(test_path):
+        result = ask_vision(test_path, "详细描述这张图片的内容")
+        print(result)
+    else:
+        print("Usage: python vision_api.template.py <image_path>")
+        print("Example: python vision_api.template.py /path/to/test.jpg")

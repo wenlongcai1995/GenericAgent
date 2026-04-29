@@ -1,13 +1,15 @@
 """
 本地 OCR 工具
-- OCR引擎: rapidocr-onnxruntime (~1s/次, 中英文准确率高, 带bbox)
+- OCR引擎: rapidocr-onnxruntime (~1s/次, 中英文准确率高, 带bbox) / tesseract (备胎, 中英文均可)
 - 坑(rapid): result[i][2] conf 是 str 不是 float
 - 坑(rapid): 无文字时 result 返回 None 而非空列表
 - 坑: enhance 放大+高对比度处理，对清晰文字有害，默认关闭
 - 坑(远程桌面): ImageGrab/mss 在 RDP 断开后截图全黑，用 ocr_window(hwnd) 代替
+- tesseract: engine='tesseract' 启用, 语言组合 chi_sim+eng, 需 brew install tesseract-lang
 """
 import re
 from PIL import ImageGrab, Image, ImageEnhance
+import pytesseract
 
 _LANG = 'zh-Hans-CN'
 _rapid_engine = None
@@ -39,21 +41,29 @@ def _ocr_rapid(img):
     text = _strip_cjk_spaces('\n'.join(lines))
     return {'text': text, 'lines': [_strip_cjk_spaces(l) for l in lines], 'details': details}
 
+def _ocr_tesseract(img):
+    """使用 tesseract 引擎 OCR，语言: chi_sim+eng"""
+    text = pytesseract.image_to_string(img, lang='chi_sim+eng')
+    lines = [l for l in text.split('\n') if l.strip()]
+    return {'text': text.strip(), 'lines': lines, 'details': []}
+
 def ocr_image(image_input, lang=_LANG, enhance=False, engine=None):
     """
     对 PIL Image 做 OCR
     :param image_input: PIL Image 对象 或 文件路径(str)
     :param lang: 保留参数，当前未使用
     :param enhance: 预处理
-    :param engine: 保留参数，当前仅支持 rapid/None
+    :param engine: 'rapid' (默认, rapidocr-onnxruntime) | 'tesseract' (tesseract备胎, chi_sim+eng)
     :return: dict {'text': 全文, 'lines': [行文本], 'details': [bbox+conf]}
     """
     if isinstance(image_input, str):
         image_input = Image.open(image_input)
     if enhance:
         image_input = _preprocess(image_input)
-    if engine not in (None, 'rapid'):
-        raise ValueError("Only rapid OCR is supported")
+    if engine not in (None, 'rapid', 'tesseract'):
+        raise ValueError("Only 'rapid' or 'tesseract' engines are supported")
+    if engine == 'tesseract':
+        return _ocr_tesseract(image_input)
     return _ocr_rapid(image_input)
 
 def ocr_screen(bbox=None, lang=_LANG, enhance=False, engine=None):

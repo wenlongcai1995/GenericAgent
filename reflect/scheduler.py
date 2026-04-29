@@ -5,8 +5,15 @@ from datetime import datetime, timedelta
 # reload时mod.__dict__保留_lock，跳过重复绑定
 try: _lock
 except NameError:
+    import sys as _sys
     _lock = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM)
-    _lock.bind(('127.0.0.1', 45762)); _lock.listen(1)
+    _lock.setsockopt(_socket.SOL_SOCKET, _socket.SO_REUSEADDR, 1)
+    try:
+        _lock.bind(('127.0.0.1', 45762)); _lock.listen(1)
+    except OSError:
+        # Port occupied → another instance running, exit gracefully
+        print('[Scheduler] Port 45762 in use, another instance already running')
+        _sys.exit(0)
 
 INTERVAL = 120
 ONCE = False

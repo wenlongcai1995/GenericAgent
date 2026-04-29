@@ -1,0 +1,75 @@
+# [Global Memory - L2]
+
+## [PROTECTED_PATHS]
+# 用户硬约束：以下路径不可操作（读/写/删/移动），除非用户明确要求
+- ~/Pictures （图片文件夹）及任何图片/媒体文件
+- 任何存放密码/密钥/凭据的文件（mykey.py/*.key/.env/credentials等）
+- ~/Library/Mobile Documents （iCloud Drive）
+
+## [USER_RULES]
+# 1. 任何操作失败/受阻必须立即返回error告知用户，由用户决定下一步，禁止沉默重试
+# 2. 拼写异常时主动纠错联想，不要死板按原词搜索
+# 3. 连续8轮流异常中断（未收到完整响应）时，立即停止任务并向用户汇报，禁止继续重试
+# 4. 输出风格：简洁精炼，先核心结论后分步细节，少格式标签多用自然语言
+# 5. 敏感文件勿动：不访问任何图片/媒体文件，不读/不碰密码/密钥/凭据文件（含mykey.py等）
+#    除非用户主动要求操作特定文件
+# 6. 浏览器密码仅认证用：自主行动时，浏览器中缓存的密码可用于登录认证，但不得以任何形式记录/存储/外泄
+
+## [USER_PREFERENCES] (from shell历史分析 2026-04-25, updated 2026-04-28)
+# 时间偏好: 夜间开发者(80%命令在21-6点), 工作日活跃(89%), 周末休息
+# 技术栈: Python驱动 + vim编辑 + Git版本控制 + Ollama本地AI推理
+# 核心项目: GenericAgent (launch.pyw/fsapp.py/agentmain.py)
+# 工具偏好: 本地AI优先(Ollama), 不使用云端API能完成则不依赖
+# 协作风格: 常 git status 查看但不立即提交, 交互后需主动告知git状态
+# 关注品牌: Topologie（香港背包/配件品牌，产品含背带系统、胸包等）
+# LLM延时测试: 特指mykey.py下native_oai_config配置的远程LLM，而非本地Ollama（见[VISION_API]中oai指向deepseek）
+
+## [LAUNCHD_PERSISTENCE]
+# scheduler进程由launchd管理（随用户登录自动启动）
+# plist: ~/Library/LaunchAgents/com.genericagent.scheduler.plist
+#   - Program: agentmain.py --reflect reflect/scheduler.py
+#   - ThrottleInterval: 30s（防止端口冲突时重启风暴）
+#   - KeepAlive: true（崩溃自动重启）
+# stderr日志: temp/reflect_logs/launchd_stderr.log
+# stdout日志: temp/reflect_logs/launchd_stdout.log
+# 端口锁: 45762 (TCP)，scheduler.py顶层try/except + SO_REUSEADDR
+#   注意: importlib.util.module_from_spec+exec_module下，端口需空闲才能绑
+#   若端口已占→打印信息后sys.exit(0)优雅退出
+
+## [PROXY_STATUS]
+# 2026-04-30 实测（P1-6 任务）
+# Clash Verge (pid=30311) + ss-local (pid=1129) 双代理运行
+# http_proxy=http://127.0.0.1:7897 (env + macOS Wi-Fi系统代理一致)
+# SOCKS5: 127.0.0.1:1087 (ss-local默认端口)
+# 网络请求时直接使用这些代理，不需要额外配置
+
+## [MACOS_CONSTRAINTS]
+# 守护进程/headless模式(simple_agent.py --port)下: 无Terminal/应用窗口,仅桌面壁纸
+# pygetwindow无app窗口; PIL.ImageGrab.grab()可截图但只有壁纸+菜单栏
+# macOS菜单栏(0-50px)OCR可读; 窗口截取只能用bbox坐标定位
+# macOS菜单栏(0-50px)OCR可读; 窗口截取有两条路径:
+# 1. (推荐) memory/screen_capture_pipeline.py --app "AppName" [--ocr] [--vision PROMPT] [--json]
+#    - 自动匹配窗口、OCR、Vision分析, 不用手动算bbox
+# 2. (保底) memory/screen_capture_pipeline.py --bbox x1,y1,x2,y2 --ocr
+#    - 给已知物理坐标时直接截
+# - OCR: ~0.1-0.3s; Vision(Ollama qwen3-vl:8b): ~35-55s
+# - 程序API: inference.capture_app("AppName", do_ocr=True, vision_prompt="描述")
+
+## [VISION_API]
+# vision_api.py 默认后端已切换为 ollama（本地推理，完全免费）
+# - ollama: qwen3-vl:8b 模型（6.1GB），localhost:11434，响应约35-55s（简单场景~35s，复杂UI/文字~55s）
+# - claude: 需要 native_claude_glm_config，mykey 中不存在
+# - openai: mykey.native_oai_config 指向 DeepSeek API，不支持 vision
+# - modelscope: API_KEY 为空
+# 统一入口: inference.capture_app("AppName", do_ocr=True, vision_prompt="描述")
+#   - 底层调用 screen_capture_pipeline.py → OCR → Vision分析 → 返回结构化dict
+# 修复日期：2026-04-30 | temperature=0.7(R53)解决空回复
+
+## [LLM_CLIENT]
+# llm_client.py - 通用文本LLM客户端（基于ollama qwen3:8b，5.2GB）
+# - 核心函数: ask_llm(prompt, system, temperature, max_tokens)
+# - 快捷函数: classify(text, categories), summarize(text, max_length)
+# - 结构化输出: ask_llm_structured(prompt, output_schema, system)
+# - 用法: from memory.llm_client import ask_llm
+# - 创建日期：2026-04-30 R61
+# 注意：与vision_api.py共用ollama实例，但llm_client.py纯文本无图

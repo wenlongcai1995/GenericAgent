@@ -187,7 +187,8 @@ if __name__ == '__main__':
     if args.bg:
         import subprocess, platform
         cmd = [sys.executable, os.path.abspath(__file__)] + [a for a in sys.argv[1:] if a != '--bg']
-        d = os.path.join(script_dir, f'temp/{args.task}'); os.makedirs(d, exist_ok=True)
+        log_name = 'reflect_logs' if args.reflect else (args.task or 'bg_logs')
+        d = os.path.join(script_dir, f'temp/{log_name}'); os.makedirs(d, exist_ok=True)
         p = subprocess.Popen(cmd, cwd=script_dir,
             creationflags=0x08000000 if platform.system() == 'Windows' else 0,
             stdout=open(os.path.join(d, 'stdout.log'), 'w', encoding='utf-8'),

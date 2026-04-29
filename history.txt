@@ -1,0 +1,10 @@
+R71 | 2026-04-30 | 效率工具 | 代理健康监控脚本 | proxy_health.sh(4635B)检测Clash Verge(:7897)+ss-local(:1086),自动恢复+daemon模式,日志至~/Library/Logs/proxy_health/
+R70 | 2026-04-30 | 工程集成 | Docker基础设施实用化 | Docker Desktop v28.1.1已安装但卡在macOS特权弹窗(vmnet), 提供一键脚本+3种即用服务方案
+R69 | 2026-04-30 | 个性化 | 用户项目结构导航地图 | 扫描~/program/下9个项目(5大分类), 建立agent任务路由映射表
+R68 | 2026-04-30 | 探索 | Mac生态工具深度扫描 | 发现5个agent可用工具: tesseract OCR+pytesseract可作vision备选, gh CLI已登录可自动化PR/Issue, pyenv+3.11.9版本隔离, autojump目录导航, VocoType语音输入
+R1 | 2026-04-29 | 了解用户 | 浏览器书签兴趣分析 | 解析Chrome Bookmarks(242个),发现用户核心兴趣:SLAM(33%)+PR论文(17%)+OpenCV(7%),输出TOP5画像报告
+R2 (2026-04-30 03:03) | 工程集成 | skill_search首次实战使用
+  105K技能卡检索集成到agent决策流。创建skill_search_utils.py便捷包装，
+  global_mem已更新L1+L3，实战验证R70/R68决策引导。
+
+R3 | 2026-04-30 03:06 | 探索 | Mac生态工具深度扫描 | 发现5个agent可用工具：tesseract OCR+pytesseract已安装可作vision备选、gh CLI已登录可自动化PR/Issue、pyenv+3.11.9版本隔离、autojump目录导航、VocoType语音输入R80 | 2026-04-30 | 实时知识 | MCP生态2026快照 | 5源交叉验证(chatforest/a2a-mcp/taskade/MCP官方/spec): 97M月下载/10K+服务器/100B+调用/AAIF 100+成员/路线图4大领域

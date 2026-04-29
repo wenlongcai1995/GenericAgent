@@ -25,7 +25,7 @@ python agentmain.py --reflect reflect/scheduler.py --bg  # 后台守护
 
 ## 日志与监控
 - scheduler自动写日志到 `sche_tasks/scheduler.log`（触发/跳过/错误）
-- `scheduler.health_check()` 返回所有任务状态列表（HEALTHY/OVERDUE/DISABLED/NEVER_RUN/ERROR）
+- 查看任务状态：直接读 `sche_tasks/scheduler.log` 或手动调用 `scheduler.check()` 返回最近触发条件
 - JSON解析错误、schedule格式错误、未知repeat类型均会记录日志
 
 ## 注意

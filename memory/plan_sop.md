@@ -23,7 +23,9 @@
 ### 步骤1：创建目录（必做） + SOP匹配 + 设置plan标志（主agent直接做）
 
 1. 创建工作目录 `mkdir plan_XXX/`
-2. 读 `sop_index.md` 匹配可用领域SOP
+2. 读 `sop_index.md` + `skill_search` 匹配可用SOP/能力卡：
+   - `sop_index.md` → 找 SOP 文件（流程规范类）
+   - `skill_search` → 语义搜索 105K 技能卡（代码片段/单步技能类），`search("英文查询", top_k=5)`
 3. 更新checkpoint：`[任务] XXX | [需求] 一句话 | [约束] 关键限制 | [匹配SOP] ... | [进度] 探索态`
 
 ### 步骤2：启动探索subagent（监察模式）

@@ -69,6 +69,51 @@ web_execute_js script='{"cmd": "batch", "commands": [...]}'
   - ⚠tabId：CDP默认sender.tab.id(当前注入页)，跨tab需显式tabId或先batch内tabs查
 - ⭐跨tab无需前台：指定tabId即可操作后台标签页
 
+## Tab 管理 (v2 — 新增close/group/summary)
+`assets/tmwd_cdp_bridge/background.js` handleExtMessage `tabs` cmd 提供 tab CRUD。
+
+### Bridge Commands (直传JSON)
+`web_execute_js` 传入JSON对象（非JS字符串）→ 被解析为命令路由：
+
+| JSON | 动作 | 返回 |
+|------|------|------|
+| `{"cmd": "tabs"}` | 列出所有 tab | `{ok:true, data:[{id,url,title,active,windowId}]}` |
+| `{"cmd":"tabs","method":"switch","tabId":N}` | 切换到 tab N | `{ok:true}` |
+| `{"cmd":"tabs","method":"close","tabIds":[N1,N2]}` | 关闭指定 tab | `{ok:true, closed:N}` |
+| `{"cmd":"tabs","method":"close_other","tabId":N}` | 关闭 N 以外的全部 tab | `{ok:true, closed:N}` |
+| `{"cmd":"tabs","method":"close_by_domain","domain":"github"}` | 关闭含域名的 tab | `{ok:true, closed:N}` |
+| `{"cmd":"tabs","method":"close_inactive"}` | 关闭所有非活跃 tab | `{ok:true, closed:N}` |
+
+⚠ close_other/close_by_domain/close_inactive 自动过滤不可脚本化页面(chrome://等)。
+
+### TabManager 模块（Python包装）
+`from memory.tab_ctl import TabManager` — 两种模式：
+
+**Direct模式**（推荐）：通过 TMWebDriver HTTP API 直接执行
+```python
+tm = TabManager()
+tabs = tm.list_tabs()           # 列表
+print(tm.grouped_summary())     # 域名分组摘要
+tm.close_by_domain("github")    # 关闭 github 标签
+tm.close([123, 456])            # 关闭指定 ID
+tm.close_inactive()             # 关闭非活跃标签
+tm.switch_to(123)               # 切换到标签
+```
+
+**Cmd-only模式**：返回 dict，供 web_execute_js 使用
+```python
+tm = TabManager(direct=False)
+cmd = tm.close_inactive_cmd()  # → {"cmd":"tabs","method":"close_inactive"}
+# 然后 web_execute_js script=json.dumps(cmd)
+```
+
+### ⚠ 扩展代码变更后需重载
+修改 background.js 后需要**重载扩展**才能生效：
+- 访问 `chrome://extensions` → 找到 tmwd_cdp_bridge → 点击刷新按钮（或Ctrl+R）
+- 或在 console 调用 `chrome.runtime.reload()`
+- ⚠ `chrome.runtime.reload()` 可能不重新注入content scripts；更彻底的方案：用management API `setEnabled(false)` → `setEnabled(true)` 完全重载
+  - 通过CDP桥：`{"cmd":"management","method":"disable","extId":"..."}` → `{"cmd":"management","method":"enable","extId":"..."}`
+
 ## CDP点击完整生命周期（未验证，BBS#23）
 - 通用点击需**三事件序列**：mouseMoved → mousePressed → mouseReleased（间隔50-100ms）
   - 省略mouseMoved会导致MUI Tooltip/Ant Design Dropdown等hover依赖组件失效

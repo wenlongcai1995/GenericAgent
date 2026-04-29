@@ -35,26 +35,32 @@ EXCLUDED = {
     "__pycache__",                 # 缓存目录
     "L4_raw_sessions",             # L4 历史会话层
     "autonomous_operation_sop",    # L3 SOP目录（含helper.py）
+    "file_access_stats.json",      # 自动生成的访问统计缓存
 }
 
 # 已知描述映射（新增文件无描述时仅列名，反直觉才加括号注释）
 KNOWN_DESCRIPTIONS = {
-    "adb_ui.py": "移动端ADB控制(截图/UI树/点击)",
+    "adb_ui.py": "截图/UI树/点击",
     "autonomous_operation_sop.md": "自主任务SOP",
+    "file_ops.py": "批量重命名/分类/格式转换",
+    "file_ops_sop.md": "文件操作SOP",
+    "gh_ops_sop.md": "GitHub CLI操作SOP",
     "github_contribution_sop.md": "GitHub绿点策略",
+    "inference.py": "统一推理接口(text/vision),ollama自动检测,回退llm_client+vision_api",
     "keychain.py": "密钥管理",
     "ljqCtrl.py": "键盘鼠标模拟(底层)",
     "ljqCtrl_sop.md": "键盘鼠标SOP",
+    "llm_client.py": "通用文本推理(ollama qwen3:8b)",
     "memory_cleanup_sop.md": "记忆清理SOP",
     "ocr_utils.py": "OCR工具",
     "plan_sop.md": "复杂任务规划SOP",
-    "procmem_scanner.py": "进程内存扫描工具",
+    "procmem_scanner.py": "进程内存扫描,仅Windows",
     "procmem_scanner_sop.md": "进程内存扫描SOP",
     "scheduled_task_sop.md": "定时任务SOP",
     "search_fetch_sop.md": "搜索+提取组合流SOP",
     "silent_fetch.py": "静默网页正文提取",
     "silent_search.py": "静默HTTP搜索",
-    "skill_search": "技能搜索",
+    "skill_search_utils.py": "105K技能卡语义检索(便捷包装)",
     "subagent.md": "子智能体协调",
     "tmwebdriver_sop.md": "浏览器特殊操作SOP",
     "ui_detect.py": "UI控件检测",
@@ -65,6 +71,12 @@ KNOWN_DESCRIPTIONS = {
     "web_setup_sop.md": "浏览器WebDriver安装SOP",
     "xiaohongshu_profile_edit_sop.md": "小红书资料修改(app独占)",
     "xiaohongshu_schedule_publish_sop.md": "小红书定时发布",
+}
+
+# 外部工具路径映射（不在memory/下，但应出现在L3索引中）
+# key=显示名, value=(路径, 描述)
+EXTERNAL_TOOLS = {
+    "gh_ops.py": ("temp/gh_ops.py", "封装gh CLI,issue/PR/release操作"),
 }
 
 
@@ -200,6 +212,11 @@ def main():
     current_items = extract_l3_items('\n'.join(content.split('\n')[l3_start:l3_end + 1]))
     new_items = build_l3_line(candidates)
     new_item_list = new_items.split(" | ")
+    
+    # 追加外部工具（不在memory/下，但应出现在L3索引中）
+    for name, (path, desc) in EXTERNAL_TOOLS.items():
+        new_item_list.append(f"{name}({path},{desc})")
+    new_items = " | ".join(new_item_list)  # 重新构建含外部工具的完整L3行
     
     # 4. 比较差异
     missing, extra = diff_l3(current_items, new_item_list)
