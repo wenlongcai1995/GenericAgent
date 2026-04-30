@@ -55,7 +55,10 @@
 # - OCR: ~0.1-0.3s; Vision(Ollama qwen3-vl:8b): ~35-55s
 # - 程序API: inference.capture_app("AppName", do_ocr=True, vision_prompt="描述")
 
-## [VISION_API]
+## [TOOLCHAIN]
+# 2026-04-30 安装：arm-none-eabi-gcc 15.2.0 (ARM Cortex-M bare-metal cross-compiler)
+# - 路径: /opt/homebrew/bin/arm-none-eabi-gcc (Homebrew安装)
+# - 用途: freestanding ARM嵌入式构建（Cortex-M4/Cortex-M等）
 # vision_api.py 默认后端已切换为 ollama（本地推理，完全免费）
 # - ollama: qwen3-vl:8b 模型（6.1GB），localhost:11434，响应约35-55s（简单场景~35s，复杂UI/文字~55s）
 # - claude: 需要 native_claude_glm_config，mykey 中不存在
@@ -73,3 +76,52 @@
 # - 用法: from memory.llm_client import ask_llm
 # - 创建日期：2026-04-30 R61
 # 注意：与vision_api.py共用ollama实例，但llm_client.py纯文本无图
+
+## [OCR_UTILS]
+# ocr_utils.py - OCR工具（基于tesseract，中文优先）
+# - 核心函数: ocr_image(image_input, lang='zh-Hans-CN', enhance=False, engine=None)
+# - 返回格式: {"text": str, "lines": [{"bbox":..., "text":...}], "details": [...]}
+# - 支持: PIL Image / numpy array / 文件路径
+# - 用法: from memory.ocr_utils import ocr_image
+# - 创建日期：R68-R73间迭代
+# 注意: 需系统级tesseract预装; 空白/无文字图返回空text(非异常)
+
+## [INFERENCE]
+# inference.py - 统一推理接口（自动选择ollama/vision_api/llm_client）
+# - 核心函数:
+#   - inference.text(prompt, system, temperature, max_tokens) → str (文本推理，回退llm_client)
+#   - inference.vision(prompt, image, ...) → str (视觉推理，自动回退OCR)
+#   - inference.capture_app(app_name, do_ocr, vision_prompt) → dict (截图+OCR+视觉流水线)
+#   - inference.classify(text, categories) → str (文本分类)
+#   - inference.summarize(text, max_length) → str (文本摘要)
+#   - inference.structured(prompt, output_schema, system) → dict (结构化输出)
+#   - inference.status() → dict (ollama/vision可用性状态)
+#   - inference.ollama_available → bool
+#   - inference.vision_available → bool
+# - 用法: from memory.inference import inference
+# - 创建日期：R68-R73间迭代
+# 注意: ollama自动检测；无ollama时回退llm_client/vision_api
+
+## [GH_OPS]
+# gh_ops.py - GitHub CLI自动化操作（基于gh CLI子进程）
+# - Issue: issue_create, issue_list, issue_close, issue_comment, issue_view
+# - PR: pr_create, pr_list, pr_merge, pr_view
+# - Release: release_create, release_list
+# - Repo: repo_list, repo_view
+# - 所有函数参数格式: (repo, ...) 或 (limit)
+# - 用法: from temp.gh_ops import issue_create
+# - 依赖: gh CLI (brew install gh, gh auth login)
+# - 创建日期：R72
+# 注意: 纯subprocess调用gh CLI，无PyGithub依赖；靠gh登录态而非token
+
+## [SILENT_FETCH]
+# silent_fetch.py - 静默网页内容提取（纯HTTP，不打开浏览器）
+# - 核心函数: silent_fetch(url, output_format='text', timeout=20) → dict
+# - 返回格式: {"success": bool, "text": str, "title": str, "url": str, "author": str, "date": str}
+# - 搭配: silent_search(query, engine='bing', top_k=5) → list
+#   - 在 temp/silent_search.py 独立模块
+# - 用法: from temp.silent_fetch import silent_fetch
+# - 用法: from temp.silent_search import silent_search
+# - 创建日期：多次迭代，最新R64
+# - 组合流: 搜+提组合见 search_fetch_sop.md
+# 注意: 基于trafilatura提取正文；DDG搜索常触发验证码，默认用bing
