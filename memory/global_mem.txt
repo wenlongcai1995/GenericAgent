@@ -104,14 +104,14 @@
 
 ## [GH_OPS]
 # gh_ops.py - GitHub CLI自动化操作（基于gh CLI子进程）
-# - Issue: issue_create, issue_list, issue_close, issue_comment, issue_view
-# - PR: pr_create, pr_list, pr_merge, pr_view
-# - Release: release_create, release_list
-# - Repo: repo_list, repo_view
-# - 所有函数参数格式: (repo, ...) 或 (limit)
-# - 用法: from temp.gh_ops import issue_create
+# - Issue: issue_create(repo, title, body='', label=''), issue_list(repo, state='open', limit=10), issue_close(repo, number), issue_comment(repo, number, body), issue_view(repo, number)
+# - PR: pr_create(repo, title, body='', head='', base='main'), pr_list(repo, state='open', limit=10), pr_merge(repo, number, method='merge'), pr_view(repo, number)
+# - Release: release_create(repo, tag, title='', notes='', files=None, latest=True), release_list(repo, limit=10)
+# - Repo: repo_list(limit=20), repo_view(repo)
+# - 用法: from memory.gh_ops import issue_create
 # - 依赖: gh CLI (brew install gh, gh auth login)
-# - 创建日期：R72
+# - 创建日期：R72，原temp/已晋升memory/
+# - 双副本: memory/gh_ops.py == temp/gh_ops.py (MD5相同)
 # 注意: 纯subprocess调用gh CLI，无PyGithub依赖；靠gh登录态而非token
 
 ## [SILENT_FETCH]
