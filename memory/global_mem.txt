@@ -116,12 +116,13 @@
 
 ## [SILENT_FETCH]
 # silent_fetch.py - 静默网页内容提取（纯HTTP，不打开浏览器）
-# - 核心函数: silent_fetch(url, output_format='text', timeout=20) → dict
-# - 返回格式: {"success": bool, "text": str, "title": str, "url": str, "author": str, "date": str}
+# - 核心函数: silent_fetch(url, output_format='text', timeout=20, summarize=False, max_summary_length=150) → dict
+# - 返回格式: {"success": bool, "text": str, "title": str, "url": str, "author": str, "date": str, "summary"?: str}
+#   - summarize=True 时自动用ollama qwen3:8b生成摘要，返回增加"summary"字段
 # - 搭配: silent_search(query, engine='bing', top_k=5) → list
-#   - 在 temp/silent_search.py 独立模块
-# - 用法: from temp.silent_fetch import silent_fetch
-# - 用法: from temp.silent_search import silent_search
-# - 创建日期：多次迭代，最新R64
+#   - 在 memory/silent_search.py 独立模块
+# - 用法: from memory.silent_fetch import silent_fetch
+# - 用法: from memory.silent_search import silent_search
+# - 创建日期：多次迭代，最新R64，v3新增AI摘要(summarize=True)
 # - 组合流: 搜+提组合见 search_fetch_sop.md
 # 注意: 基于trafilatura提取正文；DDG搜索常触发验证码，默认用bing

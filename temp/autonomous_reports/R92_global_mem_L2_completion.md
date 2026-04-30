@@ -24,3 +24,11 @@
 ## 后续建议
 - L1 Insight已包含新模块引用，无需更新
 - silent_fetch的summarize特性若需验证，可检查search_fetch_sop.md
+
+## 修正记录（第二轮验证发现）
+1. **SILENT_FETCH章节3处错误已修复**：
+   - 缺少`summarize=False, max_summary_length=150`参数 → 已补全
+   - 缺少`"summary"?: str`返回字段 → 已增加
+   - 导入路径误写为`temp.silent_fetch` → 修正为`memory.silent_fetch`
+2. **根因**：首次验证时从`temp/silent_fetch.py`导入（不同模块，无silent_fetch函数），而正确导入应是`memory/silent_fetch`
+3. **教训**：交叉验证必须明确导入路径，memory/ vs temp/ 版本可能不同
